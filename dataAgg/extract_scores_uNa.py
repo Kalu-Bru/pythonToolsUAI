@@ -62,6 +62,11 @@ def process_excel(input_path, output_path):
         for i, v in enumerate(upload_vals, start=1):
             upload_seconds.setdefault(str(i), []).append(v)
 
+    print(len(overall_scores), len(tts_seconds), len(upload_seconds))
+    normalize_lengths(overall_scores)
+    normalize_lengths(tts_seconds)
+    normalize_lengths(upload_seconds)
+
     df_overall = pd.DataFrame(overall_scores)
     df_tts = pd.DataFrame(tts_seconds)
     df_upload = pd.DataFrame(upload_seconds)

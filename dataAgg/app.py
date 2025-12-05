@@ -140,6 +140,55 @@ def process_excel_ws(df):
 
 
 # ============================================
+# Logic for Internal Search (is)
+# ============================================
+
+def process_excel_is(df):
+    cols = df.columns.tolist()
+    models = cols[1:-1]
+
+    overall_scores = {"Model": []}
+    tts_seconds = {"Model": []}
+
+    overall_pattern = r"Overall Score:\s*([0-9]+(?:\.[0-9]+)?)\b"
+    tts_pattern = r"TTS\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)"
+
+    for model in models:
+        col_data = df[model].dropna().astype(str).tolist()
+
+        overall_vals = []
+        tts_vals = []
+
+        for cell in col_data:
+            if "Overall Score" in cell:
+                val = extract_numeric(overall_pattern, cell)
+                if val is not None:
+                    overall_vals.append(float(val))
+
+            if "TTS" in cell:
+                val = extract_numeric(tts_pattern, cell)
+                if val is not None:
+                    tts_vals.append(float(val))
+
+        overall_scores["Model"].append(model)
+        tts_seconds["Model"].append(model)
+
+        for i, v in enumerate(overall_vals, start=1):
+            overall_scores.setdefault(str(i), []).append(v)
+
+        for i, v in enumerate(tts_vals, start=1):
+            tts_seconds.setdefault(str(i), []).append(v)
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        pd.DataFrame(overall_scores).to_excel(writer, sheet_name="overall_scores", index=False)
+        pd.DataFrame(tts_seconds).to_excel(writer, sheet_name="tts_seconds", index=False)
+
+    output.seek(0)
+    return output
+
+
+# ============================================
 # Streamlit UI
 # ============================================
 
@@ -147,7 +196,7 @@ st.title("Excel Score Extractor")
 
 file_type = st.selectbox(
     "Choose extraction type:",
-    ("Upload & Ask (uNa)", "Web Search (ws)")
+    ("Upload & Ask (uNa)", "Web Search (ws)", "Internal Search (is)")
 )
 
 uploaded_file = st.file_uploader("Upload your Excel file (.xlsx)", type=["xlsx"])
@@ -164,9 +213,12 @@ if st.button("Extract Scores"):
         if file_type == "Upload & Ask (uNa)":
             output = process_excel_una(df)
             filename = "extracted_results_uNa.xlsx"
-        else:
+        elif file_type == "Web Search (ws)":
             output = process_excel_ws(df)
             filename = "extracted_results_ws.xlsx"
+        else:
+            output = process_excel_is(df)
+            filename = "extracted_results_is.xlsx"
 
         st.success("Extraction complete!")
 
